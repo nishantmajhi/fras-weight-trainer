@@ -1,0 +1,208 @@
+<?php
+/*
+ * Generates src/unicode_tables.h from PHP's own mbstring.
+ *
+ * Why generate rather than hand-write: the trainer only has value if it
+ * computes the same three numbers as FRAS::look() does in production, and
+ * production's case folding *is* mb_strtolower(). Deriving the tables from
+ * mbstring itself makes agreement true by construction instead of by
+ * careful copying, and re-running this script is how you check that a PHP
+ * upgrade has not moved the target.
+ *
+ * Three things are extracted, all by probing rather than by parsing any
+ * Unicode data file:
+ *
+ *   1. The simple lowercase mapping (one codepoint in, one out).
+ *   2. The Cased and Case_Ignorable sets, which are the only properties
+ *      needed to reproduce the one context-sensitive rule mb_strtolower
+ *      applies: Greek final sigma (U+03A3 -> U+03C2 at the end of a word,
+ *      U+03C3 elsewhere).
+ *   3. The set of codepoints PCRE treats as \s under the /u modifier,
+ *      which is what FRAS::look() splits field tokens on.
+ *
+ * U+0130 (LATIN CAPITAL LETTER I WITH DOT ABOVE) is the single mapping
+ * that produces two codepoints; it is emitted as a named special case
+ * rather than bloating the table format for one entry.
+ *
+ * Run: php -d extension=mbstring tools/gen_unicode_tables.php src/unicode_tables.h
+ *
+ * The output path is an argument rather than a shell redirect because
+ * PowerShell's '>' writes a UTF-8 BOM, and a BOM at the top of a generated
+ * file is invisible in every diff that would have caught it.
+ */
+
+if (!function_exists('mb_strtolower')) {
+    fwrite(STDERR, "error: ext-mbstring is required to regenerate these tables\n");
+    exit(1);
+}
+
+if ($argc < 2) {
+    fwrite(STDERR, "usage: php tools/gen_unicode_tables.php <output.h>\n");
+    exit(1);
+}
+$outPath = $argv[1];
+ob_start();
+
+const MAXCP = 0x10FFFF;
+
+function is_surrogate(int $cp): bool { return $cp >= 0xD800 && $cp <= 0xDFFF; }
+
+/* ---- 1. simple lowercase mapping ---------------------------------- */
+
+$lower = [];      // cp => cp
+$multi = [];      // cp => [cp, ...]
+for ($cp = 0; $cp <= MAXCP; $cp++) {
+    if (is_surrogate($cp)) continue;
+    $ch = mb_chr($cp);
+    if ($ch === false) continue;
+    $lo = mb_strtolower($ch);
+    if ($lo === $ch) continue;
+    $parts = mb_str_split($lo);
+    if (count($parts) === 1) {
+        $lower[$cp] = mb_ord($parts[0]);
+    } else {
+        $multi[$cp] = array_map('mb_ord', $parts);
+    }
+}
+
+/* Final_Sigma needs a *preceding* cased letter, which a lone sigma does not
+ * have -- so mb_strtolower("\u{03A3}") already gives the non-final U+03C3,
+ * and the probe above records the right value. Assert it, because this is
+ * the assumption the C side's final-sigma rule is built on. */
+$sigmaIsolated = $lower[0x03A3] ?? null;
+
+/* ---- 2. Cased / Case_Ignorable, derived from final-sigma behaviour --- */
+/*
+ * Final_Sigma holds when the sigma is preceded by Cased (skipping
+ * Case_Ignorable) and not followed by Case_Ignorable* Cased. So:
+ *
+ *   "A" + SIGMA + X  -> sigma stays non-final (sigma) exactly when X is Cased.
+ *   "A" + X + SIGMA  -> sigma goes final (final-sigma) exactly when X is
+ *                       Cased or Case_Ignorable (the chain back to "A" holds).
+ */
+$SIGMA = "\u{03A3}";
+$FINAL = "\u{03C2}";
+
+$cased = [];
+$ignorable = [];
+for ($cp = 0; $cp <= MAXCP; $cp++) {
+    if (is_surrogate($cp)) continue;
+    $ch = mb_chr($cp);
+    if ($ch === false) continue;
+
+    $after  = mb_strtolower('A' . $SIGMA . $ch);
+    $isCased = (mb_substr($after, 1, 1) !== $FINAL);
+
+    $before = mb_strtolower('A' . $ch . $SIGMA);
+    $chainHolds = (mb_substr($before, -1) === $FINAL);
+
+    if ($isCased) {
+        $cased[] = $cp;
+    } elseif ($chainHolds) {
+        $ignorable[] = $cp;
+    }
+}
+
+/* ---- 3. PCRE \s under /u ------------------------------------------- */
+
+$spaces = [];
+for ($cp = 0; $cp <= MAXCP; $cp++) {
+    if (is_surrogate($cp)) continue;
+    $ch = mb_chr($cp);
+    if ($ch === false) continue;
+    if (preg_match('/^\s$/u', $ch) === 1) $spaces[] = $cp;
+}
+
+/* ---- emit ----------------------------------------------------------- */
+
+/** Collapses a sorted list of codepoints into [lo, hi] ranges. */
+function ranges(array $cps): array {
+    $out = [];
+    $start = $prev = null;
+    foreach ($cps as $cp) {
+        if ($start === null) { $start = $prev = $cp; continue; }
+        if ($cp === $prev + 1) { $prev = $cp; continue; }
+        $out[] = [$start, $prev];
+        $start = $prev = $cp;
+    }
+    if ($start !== null) $out[] = [$start, $prev];
+    return $out;
+}
+
+function emitRanges(string $name, array $cps): void {
+    $r = ranges($cps);
+    printf("static const uint32_t %s[][2] = {\n", $name);
+    foreach (array_chunk($r, 4) as $chunk) {
+        echo '    ';
+        foreach ($chunk as [$lo, $hi]) printf('{0x%04X,0x%04X}, ', $lo, $hi);
+        echo "\n";
+    }
+    echo "};\n";
+    printf("static const size_t %s_count = %d;\n\n", $name, count($r));
+}
+
+ksort($lower);
+
+echo "/* Generated by tools/gen_unicode_tables.php -- do not edit by hand.\n";
+echo " *\n";
+printf(" * Source: PHP %s, mbstring (Oniguruma %s), PCRE2 %s.\n",
+    PHP_VERSION,
+    defined('MB_ONIGURUMA_VERSION') ? MB_ONIGURUMA_VERSION : 'n/a',
+    trim(explode(' ', PCRE_VERSION)[0]));
+echo " *\n";
+echo " * These tables exist so that this trainer's case folding and token\n";
+echo " * splitting are identical to what FRAS::look() does in PHP. Regenerate\n";
+echo " * after a PHP upgrade and check the diff: a non-empty diff means\n";
+echo " * production's scoring moved and previously fitted weights are stale.\n";
+echo " */\n";
+echo "#ifndef FRAS_UNICODE_TABLES_H\n#define FRAS_UNICODE_TABLES_H\n\n";
+echo "#include <stddef.h>\n#include <stdint.h>\n\n";
+
+printf("/* U+0130 is the only codepoint mb_strtolower expands to more than one. */\n");
+if (isset($multi[0x0130])) {
+    printf("#define FRAS_DOTTED_I         0x0130u\n");
+    printf("#define FRAS_DOTTED_I_LOWER_0 0x%04Xu\n", $multi[0x0130][0]);
+    printf("#define FRAS_DOTTED_I_LOWER_1 0x%04Xu\n\n", $multi[0x0130][1]);
+    unset($multi[0x0130]);
+}
+if ($multi) {
+    fwrite(STDERR, sprintf(
+        "error: unexpected multi-codepoint lowercase mappings: %s\n",
+        implode(', ', array_map(fn($c) => sprintf('U+%04X', $c), array_keys($multi)))));
+    exit(1);
+}
+
+printf("/* Greek capital sigma: %s at the end of a word, %s elsewhere. */\n",
+    sprintf('U+%04X', 0x03C2), sprintf('U+%04X', 0x03C3));
+printf("#define FRAS_CAPITAL_SIGMA 0x03A3u\n");
+printf("#define FRAS_SMALL_SIGMA   0x03C3u\n");
+printf("#define FRAS_FINAL_SIGMA   0x03C2u\n\n");
+if ($sigmaIsolated !== 0x03C3) {
+    fwrite(STDERR, sprintf(
+        "error: isolated sigma lowercased to U+%04X, expected the non-final U+03C3;\n"
+        . "       the C side's final-sigma rule assumes the table holds the non-final form\n",
+        (int) $sigmaIsolated));
+    exit(1);
+}
+
+echo "/* Sorted simple lowercase mapping; binary searched. */\n";
+printf("static const uint32_t fras_lower_map[][2] = {\n");
+foreach (array_chunk($lower, 4, true) as $chunk) {
+    echo '    ';
+    foreach ($chunk as $from => $to) printf('{0x%04X,0x%04X}, ', $from, $to);
+    echo "\n";
+}
+echo "};\n";
+printf("static const size_t fras_lower_map_count = %d;\n\n", count($lower));
+
+emitRanges('fras_cased_ranges', $cased);
+emitRanges('fras_case_ignorable_ranges', $ignorable);
+emitRanges('fras_space_ranges', $spaces);
+
+echo "#endif\n";
+
+file_put_contents($outPath, ob_get_clean());
+
+fwrite(STDERR, sprintf(
+    "wrote %s\nlowercase mappings: %d\ncased ranges: %d\ncase-ignorable ranges: %d\nspace ranges: %d\n",
+    $outPath, count($lower), count(ranges($cased)), count(ranges($ignorable)), count(ranges($spaces))));

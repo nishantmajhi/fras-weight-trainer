@@ -1,0 +1,423 @@
+{
+    "generated_by": "tools/gen_vectors.php",
+    "php_version": "8.4.14",
+    "note": "Expected values are produced by running the real FRAS::look() with weights [1,0,0], [0,1,0] and [0,0,1]. See tests/README.md.",
+    "divergence_cause": "None: every pair agrees.",
+    "agreed": [
+        {
+            "query": "john",
+            "field": "john smith",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.4
+            }
+        },
+        {
+            "query": "abc",
+            "field": "abc def",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.428571
+            }
+        },
+        {
+            "query": "ab",
+            "field": "a b",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.666667
+            }
+        },
+        {
+            "query": "x",
+            "field": "a-b-c-x",
+            "expected": {
+                "prefix": 0.25,
+                "lcs": 1,
+                "levenshtein": 0.142857
+            }
+        },
+        {
+            "query": "free",
+            "field": "free text search here",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.190476
+            }
+        },
+        {
+            "query": "a",
+            "field": "aaaa",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.25
+            }
+        },
+        {
+            "query": "aaaa",
+            "field": "a",
+            "expected": {
+                "prefix": 0.25,
+                "lcs": 1,
+                "levenshtein": 0.25
+            }
+        },
+        {
+            "query": "ab",
+            "field": "ba",
+            "expected": {
+                "prefix": 0,
+                "lcs": 0.5,
+                "levenshtein": 0
+            }
+        },
+        {
+            "query": "ab",
+            "field": "ba xy",
+            "expected": {
+                "prefix": 0,
+                "lcs": 0.5,
+                "levenshtein": 0.2
+            }
+        },
+        {
+            "query": "",
+            "field": "abc",
+            "expected": {
+                "prefix": 0,
+                "lcs": 0,
+                "levenshtein": 0
+            }
+        },
+        {
+            "query": "abc",
+            "field": "",
+            "expected": {
+                "prefix": 0,
+                "lcs": 0,
+                "levenshtein": 0
+            }
+        },
+        {
+            "query": "",
+            "field": "",
+            "expected": {
+                "prefix": 0,
+                "lcs": 0,
+                "levenshtein": 1
+            }
+        },
+        {
+            "query": "corp",
+            "field": "acme-corp",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "corp",
+            "field": "acme_corp",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "corp",
+            "field": "acme,corp",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "corp",
+            "field": "acme.corp",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "corp",
+            "field": "acme/corp",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "corp",
+            "field": "acme\tcorp",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "corp",
+            "field": "acme corp",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "corp",
+            "field": "acme　corp",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "corp",
+            "field": "acme corp",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "corp",
+            "field": "---acme---corp---",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.235294
+            }
+        },
+        {
+            "query": "b",
+            "field": "a b c b",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.142857
+            }
+        },
+        {
+            "query": "smith",
+            "field": " smith",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.833333
+            }
+        },
+        {
+            "query": "net",
+            "field": ".net framework",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.214286
+            }
+        },
+        {
+            "query": "acme",
+            "field": "---acme---corp---",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.235294
+            }
+        },
+        {
+            "query": "corp",
+            "field": "　corp",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.8
+            }
+        },
+        {
+            "query": "café",
+            "field": "café royal",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.4
+            }
+        },
+        {
+            "query": "müller",
+            "field": "müller gmbh",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.545455
+            }
+        },
+        {
+            "query": "strasse",
+            "field": "hauptstraße 5",
+            "expected": {
+                "prefix": 0,
+                "lcs": 0.714286,
+                "levenshtein": 0.307692
+            }
+        },
+        {
+            "query": "αθηνα",
+            "field": "αθηνα plaza",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.454545
+            }
+        },
+        {
+            "query": "москва",
+            "field": "москва центр",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.5
+            }
+        },
+        {
+            "query": "αβγ",
+            "field": "αβγδε",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.6
+            }
+        },
+        {
+            "query": "οδος",
+            "field": "οδος αθηνας",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.363636
+            }
+        },
+        {
+            "query": "σοφια",
+            "field": "σοφια παππα",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.454545
+            }
+        },
+        {
+            "query": "istanbul",
+            "field": "istanbul hotel",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.571429
+            }
+        },
+        {
+            "query": "i̇stanbul",
+            "field": "i̇stanbul hotel",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.6
+            }
+        },
+        {
+            "query": "john",
+            "field": "John Smith",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.4
+            }
+        },
+        {
+            "query": "JOHN",
+            "field": "john smith",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.4
+            }
+        },
+        {
+            "query": "smith",
+            "field": "John Smith",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.5
+            }
+        },
+        {
+            "query": "ACME",
+            "field": "acme-corp",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.444444
+            }
+        },
+        {
+            "query": "cafe",
+            "field": "CAFÉ Royal",
+            "expected": {
+                "prefix": 0.75,
+                "lcs": 0.75,
+                "levenshtein": 0.3
+            }
+        },
+        {
+            "query": "sku123",
+            "field": "SKU-123-X",
+            "expected": {
+                "prefix": 0.5,
+                "lcs": 1,
+                "levenshtein": 0.666667
+            }
+        },
+        {
+            "query": "ΑΘΗΝΑ",
+            "field": "αθηνα plaza",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.454545
+            }
+        },
+        {
+            "query": "ΟΔΟΣ",
+            "field": "ΟΔΟΣ ΑΘΗΝΑΣ",
+            "expected": {
+                "prefix": 1,
+                "lcs": 1,
+                "levenshtein": 0.363636
+            }
+        },
+        {
+            "query": "istanbul",
+            "field": "İstanbul Hotel",
+            "expected": {
+                "prefix": 0.125,
+                "lcs": 1,
+                "levenshtein": 0.533333
+            }
+        }
+    ],
+    "divergent": []
+}

@@ -1,0 +1,8 @@
+# Build output
+*.o
+*.exe
+/fras-weight-trainer
+/tests/build/
+
+# Default output of a run
+/learned-weights.json

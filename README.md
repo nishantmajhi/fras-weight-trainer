@@ -1,0 +1,171 @@
+# fras-weight-trainer
+
+A dependency-free C command-line tool that fits `[prefix, lcs, levenshtein]`
+weights for [FRAS](<../FRAS Algorithm/README.md>) from real usage data. It
+reads labelled search sessions — a query, the candidate field values that
+were shown, and which one the user actually picked — and writes a JSON file
+in the shape FRAS's `$weightsFile` constructor argument expects.
+
+It is the companion tool referenced in FRAS's own README, section 6.3
+"Learned weights".
+
+## Building
+
+```sh
+make
+```
+
+A C11 compiler, `pthread` and `libm`. Nothing else. Builds clean under
+`-Wall -Wextra` with gcc and clang on Linux, and with MinGW on Windows.
+
+```sh
+make test     # 394 checks, no PHP required
+```
+
+## Usage
+
+```sh
+./fras-weight-trainer [options] <training-data.json>
+```
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `-o, --output PATH` | `learned-weights.json` | Output file |
+| `--step FLOAT` | `0.01` | Grid resolution (smaller = finer, slower) |
+| `-t, --threads N` | number of CPUs | Worker threads for the grid search |
+| `--min-examples N` | `3` | Minimum sessions to fit a dedicated per-profile entry; profiles below this still contribute to `global` |
+| `-v, --verbose` | off | Print per-session load detail |
+
+## Training data format
+
+```json
+{
+  "sessions": [
+    {
+      "profile": "name",
+      "query": "John",
+      "candidates": [
+        { "value": "Jonathan Doe", "chosen": false },
+        { "value": "John Smith", "chosen": true },
+        { "value": "Jon Snow", "chosen": false }
+      ]
+    }
+  ]
+}
+```
+
+- A **session** is one real search. It needs at least two usable candidates
+  and at least one marked `"chosen": true`; where several are chosen, the
+  highest-scoring of them is the one ranked.
+- `profile` is optional. A session with one contributes to both that
+  profile's fitted weights *and* to `global`; a session without one
+  contributes only to `global`.
+- `value` may also be spelled `field`, if that reads more naturally coming
+  out of a logging pipeline.
+- The document may be a bare JSON array of sessions instead of
+  `{"sessions": [...]}`.
+
+A larger example is in `examples/sample_training.json`.
+
+## Output format
+
+```json
+{
+  "profiles": {
+    "name": { "prefix": 0.38, "lcs": 0.37, "levenshtein": 0.25 },
+    "sku":  { "prefix": 0.63, "lcs": 0.22, "levenshtein": 0.15 }
+  },
+  "global": { "prefix": 0.42, "lcs": 0.33, "levenshtein": 0.25 }
+}
+```
+
+Point FRAS's `$weightsFile` at it:
+
+```php
+$fras = new FRAS($query, $records, null, null, null, 'name', '/path/to/learned-weights.json');
+$ranked = $fras->look('name');
+$fras->getResolvedWeightSource(); // 'learned:profile' if this file supplied it
+```
+
+## Why C, and why an exhaustive search
+
+The three similarity components FRAS blends — prefix score, LCS score,
+Levenshtein score — do not depend on the weights at all, only on
+`(query, field)`. So the expensive part, a UTF-8 decode and two O(n·m)
+dynamic-programming passes per candidate, is done **once per pair**, and
+fitting weights is then an exhaustive search over the weight simplex where
+each grid point costs one weighted sum and one comparison per candidate.
+
+That search is embarrassingly parallel and allocates nothing in the hot
+loop, so it is split across threads. A default 101×101 grid (`--step 0.01`)
+over a few thousand sessions finishes in well under a second — fast enough
+to treat "try every reasonable weight combination" as a real strategy
+rather than reaching for a gradient method on what is fundamentally a
+non-differentiable ranking objective.
+
+The fitted triple does not depend on `--threads`: ties are broken by the
+lexicographically smallest weight combination, so the same training data
+gives the same answer on any machine. There is a test for exactly that.
+
+## What the fitted weights optimise
+
+For each candidate weight triple, every session's candidates are scored and
+ranked the way `FRAS::look()` would rank them. The trainer reports:
+
+- **MRR** (mean reciprocal rank), the primary objective — `1/rank` of the
+  best-ranked chosen candidate, averaged over sessions. Smoother than raw
+  accuracy, so it prefers weights that at least get the right answer near
+  the top on sessions it cannot get exactly right.
+- **top-1 accuracy**, the fraction of sessions where the chosen candidate
+  came out first. Used to break MRR ties, and reported so the fit can be
+  sanity-checked.
+
+Ties in similarity score are resolved in the chosen candidate's favour,
+matching the best case a stable sort could produce depending on record
+order.
+
+## Agreeing with production
+
+The trainer reimplements FRAS's scoring in C. If the two implementations
+disagree, the weights it produces are optimal for a function that never
+runs, and nothing reports an error — the rankings simply get worse.
+
+So agreement is treated as a contract and tested from both ends.
+`tests/vectors.json` holds `(query, field) -> {prefix, lcs, levenshtein}`
+expectations **generated by running the real PHP class**; the C suite
+asserts against them and `tools/check_php.php` replays them through PHP.
+
+To make that agreement reachable rather than approximate, the Unicode
+tables in `src/unicode_tables.h` are generated from `mbstring` itself
+(`make tables`) rather than hand-written. They cover the full simple
+lowercase mapping, the Greek final-sigma rule, the one mapping that makes a
+string *longer* when lower-cased (U+0130), and the exact set of characters
+PCRE treats as `\s` under `/u`, which is what FRAS splits tokens on.
+
+**There are no known disagreements.** Every vector agrees, and
+`tools/differential.php` finds none over thousands of random pairs.
+`tests/README.md` has the numbers, and the history of the two that were
+found and fixed.
+
+## Notes and limitations
+
+- **Exact scoring only.** FRAS's optional Levenshtein short-circuit
+  (`$enableShortCircuit`) is an approximation; the trainer always computes
+  exact LCS and Levenshtein, since fitting weights against approximated
+  scores would tune them for the wrong function.
+- **The reported MRR is an upper bound.** It is measured on the same data
+  the weights were fitted to. There is no held-out split, so with a small
+  number of sessions an exhaustive search will fit the training set
+  perfectly and generalise badly. The tool warns when a group has fewer
+  than 30 sessions; `--min-examples` separately refuses to write a
+  dedicated profile entry below 3.
+- **Nesting in training files is capped** at 200 levels. The format is two
+  levels deep, and the cap is what stops a malformed file from exhausting
+  the stack.
+
+## Licence
+
+Free for personal, non-commercial use. You may use, study and modify this
+software for yourself, but you may not use it commercially, and you may not
+share or publish it, in its original form or modified. See [LICENSE](LICENSE)
+for the full terms.

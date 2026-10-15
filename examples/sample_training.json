@@ -1,0 +1,110 @@
+{
+  "sessions": [
+    {
+      "profile": "name",
+      "query": "John",
+      "candidates": [
+        { "value": "Jonathan Doe", "chosen": false },
+        { "value": "John Smith", "chosen": true },
+        { "value": "Jon Snow", "chosen": false }
+      ]
+    },
+    {
+      "profile": "name",
+      "query": "smith",
+      "candidates": [
+        { "value": "Smithsonian Institute", "chosen": false },
+        { "value": "John Smith", "chosen": true },
+        { "value": "Random Unrelated Text", "chosen": false }
+      ]
+    },
+    {
+      "profile": "name",
+      "query": "Maria Garcia",
+      "candidates": [
+        { "value": "Maria Garcia", "chosen": true },
+        { "value": "Mario Garcia", "chosen": false },
+        { "value": "Maria Gutierrez", "chosen": false }
+      ]
+    },
+    {
+      "profile": "name",
+      "query": "OBrien",
+      "candidates": [
+        { "value": "Patrick O'Brien", "chosen": true },
+        { "value": "O'Brien Consulting Group", "chosen": false },
+        { "value": "Brianna O'Bryan", "chosen": false }
+      ]
+    },
+    {
+      "profile": "name",
+      "query": "cafe owner rene",
+      "candidates": [
+        { "value": "René Dupont", "chosen": true },
+        { "value": "Renee Adams", "chosen": false },
+        { "value": "Random Owner", "chosen": false }
+      ]
+    },
+    {
+      "profile": "sku",
+      "query": "AB12",
+      "candidates": [
+        { "value": "AB12-RED-L", "chosen": true },
+        { "value": "AB99-BLU-S", "chosen": false },
+        { "value": "ZZ12-RED-L", "chosen": false }
+      ]
+    },
+    {
+      "profile": "sku",
+      "query": "XY9",
+      "candidates": [
+        { "value": "XY9-BLK", "chosen": true },
+        { "value": "XA9-BLK", "chosen": false },
+        { "value": "9-XY-OLD", "chosen": false }
+      ]
+    },
+    {
+      "profile": "sku",
+      "query": "TSHIRT-M",
+      "candidates": [
+        { "value": "TSHIRT-M-BLUE", "chosen": true },
+        { "value": "TSHIRT-L-BLUE", "chosen": false },
+        { "value": "M-TSHIRT-OLD-SKU", "chosen": false }
+      ]
+    },
+    {
+      "profile": "sku",
+      "query": "9910",
+      "candidates": [
+        { "value": "9910-A", "chosen": true },
+        { "value": "9911-A", "chosen": false },
+        { "value": "A-9910", "chosen": false }
+      ]
+    },
+    {
+      "profile": "sku",
+      "query": "BOLT-M8",
+      "candidates": [
+        { "value": "BOLT-M8-20MM", "chosen": true },
+        { "value": "BOLT-M6-20MM", "chosen": false },
+        { "value": "NUT-M8-20MM", "chosen": false }
+      ]
+    },
+    {
+      "query": "gmail",
+      "candidates": [
+        { "value": "gmail.com", "chosen": true },
+        { "value": "hotmail.com", "chosen": false },
+        { "value": "outlook.com", "chosen": false }
+      ]
+    },
+    {
+      "query": "349 Main Street Apt 2",
+      "candidates": [
+        { "value": "Apt 2, 349 Main Street", "chosen": true },
+        { "value": "349 Maine Street", "chosen": false },
+        { "value": "12 Side Alley", "chosen": false }
+      ]
+    }
+  ]
+}
